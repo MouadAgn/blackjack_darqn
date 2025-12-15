@@ -1,35 +1,50 @@
 # 🃏 Blackjack Atari Agent - DARQN + Attention
 
-Ce projet implémente un agent d'Apprentissage par Renforcement Profond (Deep RL) capable de jouer au Blackjack sur l'environnement Atari (`ALE/Blackjack-v5`) de Gymnasium.
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange)
+![Gymnasium](https://img.shields.io/badge/Gymnasium-Atari-green)
+![Status](https://img.shields.io/badge/Status-Training-yellow)
 
-L'architecture utilisée est un **DARQN (Deep Attention Recurrent Q-Network)**. Elle est conçue pour traiter des informations visuelles partielles et séquentielles, ce qui est idéal pour le Blackjack où l'agent doit :
-1. **Voir** les cartes (Vision via CNN).
-2. **Se souvenir** des cartes précédentes (Mémoire via LSTM).
-3. **Se focaliser** sur les zones importantes de l'écran (Mécanisme d'Attention).
+> Un agent d'Apprentissage par Renforcement Profond (Deep RL) capable de jouer au Blackjack sur l'environnement Atari (`ALE/Blackjack-v5`).
+
+## 📺 Démo (Attention Map)
+
+Voici ce que l'agent "regarde" pendant qu'il joue. La carte de chaleur (heatmap) rouge indique les zones d'attention du réseau de neurones :
+
+![Demo Blackjack](blackjack_attention.gif)
+
+*(Si le GIF ne s'affiche pas, assurez-vous d'avoir lancé `test.py` pour le générer)*
+
+## 🧠 Architecture du Modèle
+
+Ce projet utilise une architecture **DARQN (Deep Attention Recurrent Q-Network)**. Contrairement à un DQN classique, ce modèle est conçu pour les environnements où l'information est partielle ou nécessite une mémoire à court terme.
+
+
+
+### Pourquoi cette architecture ?
+Le Blackjack n'est pas seulement visuel, il est **séquentiel**.
+1.  **CNN (Convolutional Neural Network)** : Traite l'image brute (pixels) pour extraire les caractéristiques visuelles.
+2.  **Attention Mechanism** : Permet au réseau de se focaliser uniquement sur les cartes et d'ignorer le fond décoratif du casino Atari.
+3.  **LSTM (Long Short-Term Memory)** : Retient l'historique de la main (quelles cartes ont déjà été tirées) pour prendre une décision éclairée (Hit ou Stick).
 
 ## 📂 Structure du Projet
-
-L'organisation des fichiers suit une architecture modulaire :
 
 ```text
 blackjack_darqn/
 │
-├── checkpoints/             # Dossier de sauvegarde des modèles (.pth)
-├── logs/                    # Logs pour TensorBoard (optionnel)
+├── checkpoints/             # Sauvegarde des poids du modèle (.pth)
+├── logs/                    # Logs d'entraînement
 │
-├── src/                     # Code source principal
-│   ├── __init__.py
-│   ├── model.py             # Architecture DARQN (CNN + Attention + LSTM)
-│   ├── memory.py            # Replay Buffer Séquentiel (gère les séquences temporelles)
-│   ├── agent.py             # Logique d'apprentissage (Loss, Backprop, Target Update)
-│   └── utils.py             # Wrappers d'environnement (Preprocessing Atari)
+├── src/                     # Code source
+│   ├── model.py             # Le réseau (CNN + Attention + LSTM)
+│   ├── memory.py            # Replay Buffer Séquentiel
+│   ├── agent.py             # L'agent (Sélection d'action & Entraînement)
+│   └── utils.py             # Wrappers & Preprocessing Atari
 │
-├── config.py                # Hyperparamètres (Learning rate, Batch size, Gamma...)
-├── main.py                  # Script pour lancer l'entraînement
-├── test.py                  # Script pour tester et visualiser (GIF avec Heatmap)
-├── requirements.txt         # Dépendances Python
-└── README.md                # Documentation du projet
-```text
+├── config.py                # Hyperparamètres
+├── main.py                  # Script d'entraînement
+├── test.py                  # Script de visualisation
+└── requirements.txt         # Dépendances
 
 
 ⚙️ Installation
