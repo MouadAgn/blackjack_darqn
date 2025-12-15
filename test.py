@@ -12,7 +12,7 @@ def load_model(path, device, num_actions):
     model = DARQN(input_shape=(1, 84, 84), num_actions=num_actions, hidden_dim=HYPERPARAMS["hidden_dim"])
     model.load_state_dict(torch.load(path, map_location=device))
     model.to(device)
-    model.eval() # Mode évaluation (désactive dropout, etc.)
+    model.eval() # Mode évaluation
     return model
 
 # Fonction pour superposer l'attention sur l'image du jeu
@@ -22,48 +22,55 @@ def visualize_attention(frame, attention_map):
     attention_map: grille 7x7 sortie du modèle
     """
     # 1. Redimensionner l'attention (7x7) à la taille de l'écran (160x210)
-    # On utilise INTER_CUBIC pour avoir un effet "nuage" lisse plutôt que des carrés pixelisés
     att_resized = cv2.resize(attention_map, (160, 210), interpolation=cv2.INTER_CUBIC)
     
-    # 2. Normaliser entre 0 et 255 pour la couleur
+    # 2. Normaliser entre 0 et 255
     att_resized = (att_resized - att_resized.min()) / (att_resized.max() - att_resized.min() + 1e-8)
     att_uint8 = np.uint8(255 * att_resized)
     
     # 3. Appliquer une colormap (JET = Bleu vers Rouge)
+    # OpenCV génère du BGR, il faut convertir en RGB pour aller avec Gymnasium
     heatmap = cv2.applyColorMap(att_uint8, cv2.COLORMAP_JET)
+    heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
     
     # 4. Superposer : 60% image originale + 40% heatmap
-    # Convertir la frame RGB (Gym) en BGR (OpenCV) si besoin, ou inversement
-    if frame.shape[2] == 3: # Si couleur
-         # OpenCV utilise BGR par défaut, Matplotlib/Gym utilisent RGB.
-         # Ici on suppose que frame est RGB.
-         pass
-
     overlay = cv2.addWeighted(frame, 0.6, heatmap, 0.4, 0)
     return overlay
 
 def run_test(model_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # On crée l'environnement avec render_mode='rgb_array' pour récupérer les images couleurs
+    # On crée l'environnement
     env = make_env(HYPERPARAMS["env_name"], render_mode='rgb_array')
     
     num_actions = env.action_space.n
-    model = load_model(model_path, device, num_actions)
     
-    print(f"Chargement du modèle depuis {model_path}...")
-    
+    # Chargement sécurisé du modèle
+    try:
+        model = load_model(model_path, device, num_actions)
+        print(f"Chargement du modèle depuis {model_path}...")
+    except FileNotFoundError:
+        print(f"ERREUR : Le fichier {model_path} n'existe pas encore.")
+        print("Vérifiez que vous avez bien lancé main.py et attendu l'épisode 100.")
+        return
+
     obs, _ = env.reset()
     hidden = model.init_hidden(batch_size=1, device=device)
     
-    frames = [] # Pour stocker le GIF
+    frames = [] 
     done = False
     
     print("Début de la partie...")
     
-    while not done:
+    # --- SÉCURITÉ : Compteur de pas pour éviter la boucle infinie ---
+    steps = 0
+    max_steps = 100 # On force l'arrêt si la partie dure trop longtemps
+    
+    while not done and steps < max_steps:
+        steps += 1
+        
         # --- 1. Préparation de l'observation ---
-        # Obs est un Tensor (1, 84, 84) grâce au wrapper
+        # obs est déjà (1, 84, 84) grâce à utils.py
         # On ajoute la dimension Batch -> (1, 1, 84, 84)
         current_obs = obs.unsqueeze(0).to(device)
         
@@ -73,10 +80,9 @@ def run_test(model_path):
             action = q_values.argmax().item()
             
         # --- 3. Visualisation ---
-        # On récupère l'image brute couleur pour l'humain
-        raw_frame = env.render() # (210, 160, 3)
+        raw_frame = env.render() # Image RGB
         
-        # On récupère la carte d'attention (1, 7, 7) -> on passe en numpy (7, 7)
+        # On récupère la carte d'attention
         att_map_numpy = att_weights.squeeze().cpu().numpy()
         
         # Création de l'image mixée
@@ -88,17 +94,21 @@ def run_test(model_path):
         done = terminated or truncated
         
         if done:
-            print(f"Partie terminée. Récompense finale : {reward}")
+            print(f"Partie terminée (Victoire/Défaite). Récompense finale : {reward}")
+    
+    if steps >= max_steps:
+        print("Partie arrêtée (Limite de temps atteinte).")
 
     env.close()
     
     # Sauvegarde en GIF
-    save_path = "blackjack_attention.gif"
-    imageio.mimsave(save_path, frames, fps=15) # 15 images par seconde
-    print(f"Animation sauvegardée sous : {save_path}")
+    if len(frames) > 0:
+        save_path = "blackjack_attention.gif"
+        imageio.mimsave(save_path, frames, fps=15)
+        print(f"Animation sauvegardée sous : {save_path}")
+    else:
+        print("Erreur : Aucune frame n'a été enregistrée.")
 
 if __name__ == "__main__":
-    # Remplacez par le chemin de votre meilleur checkpoint
-    # Si vous n'avez pas encore entraîné, le script plantera au chargement.
-    # Pour tester le code sans entraînement, commentez 'model.load_state_dict...' dans load_model
-    run_test("checkpoints/model_final.pth")
+    # Assurez-vous que ce fichier existe bien dans le dossier checkpoints/
+    run_test("checkpoints/model_100.pth")

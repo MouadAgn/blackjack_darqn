@@ -35,39 +35,40 @@ def train():
             HYPERPARAMS["epsilon_start"] - (episode / HYPERPARAMS["epsilon_decay"])
         )
 
+       # ... (début de la boucle for episode) ...
         obs, _ = env.reset()
-        
-        # Initialisation de l'état caché du LSTM à zéro pour le début de la partie
         hidden = agent.policy_net.init_hidden(batch_size=1, device=device)
         
         episode_record = []
         done = False
         total_reward = 0
+        steps = 0  # <--- COMPTEUR DE PAS
+        max_steps = 100 # <--- SÉCURITÉ : Blackjack ne dure jamais 100 tours
         
         while not done:
-            # 1. Préparer l'observation pour le réseau
-            # obs est (1, 84, 84), on ajoute la dimension Batch -> (1, 1, 84, 84)
             state_tensor = obs.unsqueeze(0).to(device)
             
-            # 2. Choisir une action
             action, next_hidden = agent.select_action(state_tensor, hidden, epsilon)
             
-            # 3. Exécuter l'action dans l'environnement
             next_obs, reward, terminated, truncated, _ = env.step(action)
+            
+            # Gestion de la fin de partie (Done ou limite de temps atteinte)
+            steps += 1
+            if steps >= max_steps:
+                truncated = True # On force l'arrêt
+            
             done = terminated or truncated
             
-            # 4. Stocker la transition dans l'historique temporaire de l'épisode
-            # (obs, action, reward, next_obs, done)
             episode_record.append((obs, action, reward, next_obs, done))
             
-            # 5. Apprentissage (Une étape d'optimisation)
-            # On n'apprend que si on a assez de données en mémoire
-            loss = agent.train_step(memory)
+            # Important : Si loss est None (buffer vide), on met 0 pour l'affichage
+            step_loss = agent.train_step(memory)
+            loss = step_loss if step_loss is not None else 0
             
-            # 6. Mise à jour pour l'étape suivante
             obs = next_obs
-            hidden = next_hidden # Important : on passe le hidden state au tour suivant
+            hidden = next_hidden
             total_reward += reward
+          
             
         # Fin de l'épisode : on ajoute tout l'historique dans la mémoire principale
         memory.push(episode_record)
