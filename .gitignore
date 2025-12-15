@@ -1,0 +1,18 @@
+# Fichiers Python compilés
+__pycache__/
+*.pyc
+
+# Dossiers de l'environnement virtuel (si vous en avez un)
+venv/
+env/
+.env
+
+# Dossiers de logs et de checkpoints (Trop lourds pour GitHub)
+logs/
+checkpoints/
+
+# Fichiers système
+.DS_Store
+
+# On garde le GIF pour le README, mais on ignore les autres vidéos temporaires
+*.mp4
