@@ -45,7 +45,7 @@ blackjack_darqn/
 ├── main.py                  # Script d'entraînement
 ├── test.py                  # Script de visualisation
 └── requirements.txt         # Dépendances
-
+```
 
 ⚙️ Installation
 1. Prérequis

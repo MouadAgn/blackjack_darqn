@@ -77,9 +77,12 @@ def train():
             agent.target_net.load_state_dict(agent.policy_net.state_dict())
         
         # Logs et sauvegarde
-        if episode % 100 == 0:
+       # Modifiez 100 en 10 ou 1 pour le test
+        if episode % 10 == 0: 
             print(f"Episode {episode} | Reward: {total_reward} | Epsilon: {epsilon:.2f} | Loss: {loss if loss else 0:.4f}")
-            torch.save(agent.policy_net.state_dict(), f"checkpoints/model_{episode}.pth")
+            # Gardez la sauvegarde à 100 pour ne pas remplir votre disque
+            if episode % 100 == 0:
+                 torch.save(agent.policy_net.state_dict(), f"checkpoints/model_{episode}.pth")
 
 if __name__ == "__main__":
     train()
