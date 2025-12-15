@@ -29,6 +29,8 @@ blackjack_darqn/
 ├── test.py                  # Script pour tester et visualiser (GIF avec Heatmap)
 ├── requirements.txt         # Dépendances Python
 └── README.md                # Documentation du projet
+```text
+
 
 ⚙️ Installation
 1. Prérequis
